@@ -84,6 +84,8 @@ struct proc {
 	long nanodollars; 
 };
 
+int random(void);
+
 // Process memory is laid out contiguously, low addresses first:
 //   text
 //   original data and bss

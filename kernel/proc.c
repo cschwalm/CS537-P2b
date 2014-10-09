@@ -12,7 +12,7 @@ struct {
   struct proc proc[NPROC];
 } ptable;
 
-extern struct pstat stats;
+extern struct pstat *stats;
 
 static struct proc *initproc;
 
@@ -308,46 +308,54 @@ scheduler(void)
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
+      int index = 0;
+			if(p->state != RUNNABLE)
 					continue;
 
 			count+= p->tickets;
 			if (count <= winnerTicket)
 				continue;			
 
-			stats->inuse[p] = 1;
-			stats->pid[p] = p->pid;
-			stats->chosen[p]++;
+			index = p - ptable.proc;
+			stats->inuse[index] = 1;
+			stats->pid[index] = p->pid;
+			stats->chosen[index]++;
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
       proc = p;
-      switcihuvm(p);
+      switchuvm(p);
       p->state = RUNNING;
       swtch(&cpu->scheduler, proc->context);
       switchkvm();
 
-			stats->inuse[p] = 0;
-			stats->time[p] = stats->time[p] + 10;
+			stats->inuse[index] = 0;
+			stats->time[index] = stats->time[index] + 10;
 				
 			//Assume this runs every 10 milliseconds. At a rate of 100n$/ms this accumulates 1u$ per slice.
 			if (p->scheduleMode == RESERVED)
 			{
-				stats->charge[p]++;
+				stats->charge[index]++;
 			}
 			else
 			{
 				long incurredCharge = p->bid * 10;
 				incurredCharge += p->nanodollars;
-				stats->charge[p] = incurredCharge%1000;
+				stats->charge[index] = incurredCharge%1000;
 			}
       // Process is done running for now.
       // It should have changed its p->state before coming back.
       proc = 0;
+			break;
     }
     release(&ptable.lock);
 
   }
+}
+
+int random(void)
+{
+	return 0;
 }
 
 // Enter scheduler.  Must hold only ptable.lock

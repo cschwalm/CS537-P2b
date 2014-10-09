@@ -264,36 +264,83 @@ scheduler(void)
   int winnerTicket;
 
   for(;;){
-    
+    int unusedFlag = 0;
 		int count = 0;
 		// Enable interrupts on this processor.
     sti();
 
+		//If there is left over space, try to find a highest bidder.
+		//if none exist, set unusedFlag. (Assuming we don't allow programs to run for free)
+		if (ticketCount < 199)
+		{
+			struct proc *spot;
+			int highestBid = 0;
+			for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+				if(p->state != RUNNABLE)
+					continue;
+				if (p->bid > highestBid) {
+					spot = p;
+					highestBid = p->bid;
+				}
+			}
+			if (highestBid != 0)
+			{
+				spot->tickets = 199 - ticketCount;
+			}
+			else
+			{
+				unusedFlag = 1;
+			}
+		}
+
 		winnerTicket = random();
 
-
+		//If there are no spot programs and winnerTicket is in the spot program domain (above ticketCount),
+		//We regenerate winnerTicket until a valid ticket is pulled
+		if (unusedFlag == 1 && ticketCount > 0)
+		{
+			while (winnerTicket >= ticketCount)
+			{
+				winnerTicket = random();
+			}
+		}
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->state != RUNNABLE)
-      {
-				count += p->tickets;
-				if (count > winnerTicket)
 					continue;
-			}
 
+			count+= p->tickets;
+			if (count <= winnerTicket)
+				continue;			
+
+			stats->inuse[p] = 1;
+			stats->pid[p] = p->pid;
+			stats->chosen[p]++;
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
       proc = p;
-      switchuvm(p);
+      switcihuvm(p);
       p->state = RUNNING;
       swtch(&cpu->scheduler, proc->context);
       switchkvm();
 
-
-			pstat
+			stats->inuse[p] = 0;
+			stats->time[p] = stats->time[p] + 10;
+				
+			//Assume this runs every 10 milliseconds. At a rate of 100n$/ms this accumulates 1u$ per slice.
+			if (p->scheduleMode == RESERVED)
+			{
+				stats->charge[p]++;
+			}
+			else
+			{
+				long incurredCharge = p->bid * 10;
+				incurredCharge += p->nanodollars;
+				stats->charge[p] = incurredCharge%1000;
+			}
       // Process is done running for now.
       // It should have changed its p->state before coming back.
       proc = 0;

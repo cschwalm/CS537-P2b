@@ -61,6 +61,7 @@ struct context {
 };
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
+enum schedmode { RESERVED, SPOT };
 
 // Per-process state
 struct proc {
@@ -78,6 +79,9 @@ struct proc {
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
   int tickets;
+	int scheduleMode;
+	int bid;
+	long nanodollars; 
 };
 
 // Process memory is laid out contiguously, low addresses first:

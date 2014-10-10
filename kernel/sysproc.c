@@ -4,7 +4,63 @@
 #include "param.h"
 #include "mmu.h"
 #include "proc.h"
+#include "pstat.h"
 #include "sysfunc.h"
+
+extern struct pstat* stats;
+
+int
+sys_reserve(void)
+{
+
+	int percent;
+	
+  if(argint(0, &percent) < 0)
+    return -1;
+
+	if (percent < 1 || percent > 100)
+		return -1;
+
+	if (ticketCount + percent > 200)
+		return -1;
+
+	ticketCount += (percent - 1); //Percent is 1 to 100
+	proc->percent = (percent - 1);
+
+	return 0;
+}
+
+int
+sys_spot(void)
+{
+	
+	int bid;
+	
+  if(argint(0, &bid) < 0)
+    return -1;
+
+	if (bid < 0)
+		return -1;
+
+	proc->percent = 0;
+	proc->bid = bid;
+
+	return 0;
+}
+
+int
+sys_getpinfo(void)
+{
+
+	struct pstat* stat;
+	
+  if(argptr(0, (char**) &stat, sizeof(stats) < 0))
+    return -1;
+
+	stat = stats;
+
+	return 0;
+}
 
 int
 sys_fork(void)

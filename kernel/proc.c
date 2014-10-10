@@ -12,7 +12,7 @@ struct {
   struct proc proc[NPROC];
 } ptable;
 
-extern struct pstat *stats;
+struct pstat *stats;
 
 static struct proc *initproc;
 
@@ -257,69 +257,21 @@ wait(void)
 //  - swtch to start running that process
 //  - eventually that process transfers control
 //      via swtch back to the scheduler.
-void
+/*void
 scheduler(void)
 {
   struct proc *p;
-  int winnerTicket;
 
   for(;;){
-    int unusedFlag = 0;
-		int count = 0;
-		// Enable interrupts on this processor.
+    // Enable interrupts on this processor.
     sti();
-
-		//If there is left over space, try to find a highest bidder.
-		//if none exist, set unusedFlag. (Assuming we don't allow programs to run for free)
-		if (ticketCount < 199)
-		{
-			struct proc *spot;
-			int highestBid = 0;
-			for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-				if(p->state != RUNNABLE)
-					continue;
-				if (p->bid > highestBid) {
-					spot = p;
-					highestBid = p->bid;
-				}
-			}
-			if (highestBid != 0)
-			{
-				spot->tickets = 199 - ticketCount;
-			}
-			else
-			{
-				unusedFlag = 1;
-			}
-		}
-
-		winnerTicket = random();
-
-		//If there are no spot programs and winnerTicket is in the spot program domain (above ticketCount),
-		//We regenerate winnerTicket until a valid ticket is pulled
-		if (unusedFlag == 1 && ticketCount > 0)
-		{
-			while (winnerTicket >= ticketCount)
-			{
-				winnerTicket = random();
-			}
-		}
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      int index = 0;
-			if(p->state != RUNNABLE)
-					continue;
+      if(p->state != RUNNABLE)
+        continue;
 
-			count+= p->tickets;
-			if (count <= winnerTicket)
-				continue;			
-
-			index = p - ptable.proc;
-			stats->inuse[index] = 1;
-			stats->pid[index] = p->pid;
-			stats->chosen[index]++;
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
@@ -329,33 +281,125 @@ scheduler(void)
       swtch(&cpu->scheduler, proc->context);
       switchkvm();
 
-			stats->inuse[index] = 0;
-			stats->time[index] = stats->time[index] + 10;
-				
-			//Assume this runs every 10 milliseconds. At a rate of 100n$/ms this accumulates 1u$ per slice.
-			if (p->scheduleMode == RESERVED)
-			{
-				stats->charge[index]++;
-			}
-			else
-			{
-				long incurredCharge = p->bid * 10;
-				incurredCharge += p->nanodollars;
-				stats->charge[index] = incurredCharge%1000;
-			}
       // Process is done running for now.
       // It should have changed its p->state before coming back.
       proc = 0;
-			break;
     }
+    release(&ptable.lock);
+  }
+} */
+
+void
+scheduler(void)
+{
+  struct proc *p;
+  int winnerTicket;
+	struct proc *spot;
+	int highestBid;
+
+  for(;;){
+		spot = NULL;
+		highestBid = -1;
+		int count = 0;
+
+		// Enable interrupts on this processor.
+    sti();
+
+		//If there is left over space, try to find a highest bidder.
+		//if none exist, set unusedFlag. (Assuming we don't allow programs to run for free)
+		if (ticketCount < 199)
+		{
+
+			
+    	acquire(&ptable.lock);
+			for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+			{
+				if(p->state != RUNNABLE)
+					continue;
+				if (p->bid > highestBid)
+				{
+					spot = p;
+					highestBid = p->bid;
+				}
+			}
+		}
+
+		winnerTicket = random();
+
+		//If there are no spot programs and winnerTicket is in the spot program domain (above ticketCount),
+		//We regenerate winnerTicket until a valid ticket is pulled
+		if (spot == NULL && ticketCount > 0)
+		{
+			while (winnerTicket >= ticketCount)
+			{
+				winnerTicket = random();
+			}
+		}
+
+		int index = 0;
+		if (winnerTicket > ticketCount)
+		{
+			p = spot;
+		}
+		else
+		{
+			// Loop over process table looking for process to run.
+			for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+			{
+				if(p->state != RUNNABLE)
+					continue;
+
+				count+= p->percent;
+				if (count <= winnerTicket)
+					continue;			
+			}
+		}
+
+		index = p - ptable.proc;
+		stats->inuse[index] = 1;
+		stats->pid[index] = p->pid;
+		p->timesrun++;
+		stats->chosen[index] = p->timesrun;
+    // Switch to chosen process.  It is the process's job
+    // to release ptable.lock and then reacquire it
+    // before jumping back to us.
+    proc = p;
+    switchuvm(p);
+    p->state = RUNNING;
+    swtch(&cpu->scheduler, proc->context);
+    switchkvm();
+
+		stats->inuse[index] = 0;
+		stats->time[index] = stats->time[index] + 10;
+				
+		//Assume this runs every 10 milliseconds. At a rate of 100n$/ms this accumulates 1u$ per slice.
+		if (p->percent != 0)
+		{
+			stats->charge[index]++;
+		}
+		else
+		{
+			long incurredCharge = p->bid * 10;
+			incurredCharge += p->nanodollars;
+			stats->charge[index] = (int) (incurredCharge%1000);
+			p->nanodollars = incurredCharge;
+		}
+
     release(&ptable.lock);
 
   }
-}
+ }
 
-int random(void)
+int
+random(void)
 {
-	return 0;
+	unsigned short lfsr = 0xACE1u;
+	unsigned bit;
+
+	bit  = ((lfsr >> 0) ^ (lfsr >> 2) ^ (lfsr >> 3) ^ (lfsr >> 5) ) & 1;
+	lfsr =  (lfsr >> 1) | (bit << 15);
+
+	return (lfsr % 200);
 }
 
 // Enter scheduler.  Must hold only ptable.lock

@@ -61,7 +61,6 @@ struct context {
 };
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
-enum schedmode { RESERVED, SPOT };
 
 // Per-process state
 struct proc {
@@ -78,10 +77,11 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
-  int tickets;
-	int scheduleMode;
-	int bid;
-	long nanodollars; 
+  int percent;
+  int bid;
+  long nanodollars;
+  int timesrun;
+
 };
 
 int random(void);

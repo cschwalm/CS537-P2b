@@ -308,9 +308,7 @@ scheduler(void)
 		//If there is left over space, try to find a highest bidder.
 		//if none exist, set unusedFlag. (Assuming we don't allow programs to run for free)
 		if (ticketCount < 199)
-		{
-
-			
+		{	
     	acquire(&ptable.lock);
 			for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
 			{
@@ -328,7 +326,8 @@ scheduler(void)
 
 		//If there are no spot programs and winnerTicket is in the spot program domain (above ticketCount),
 		//We regenerate winnerTicket until a valid ticket is pulled
-		if (spot == NULL && ticketCount > 0)
+		//This makes sure that winner ticket will choose a reserved program.
+		if (spot == NULL)
 		{
 			while (winnerTicket >= ticketCount)
 			{
@@ -344,17 +343,20 @@ scheduler(void)
 		else
 		{
 			// Loop over process table looking for process to run.
+			// We need to find a reserved process
 			for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
 			{
 				if(p->state != RUNNABLE)
 					continue;
 
 				count+= p->percent;
-				if (count <= winnerTicket)
-					continue;			
+				if (count < winnerTicket)
+					continue;
+				break;
 			}
 		}
 
+		//We now have found the process we want to run.
 		index = p - ptable.proc;
 		stats->inuse[index] = 1;
 		stats->pid[index] = p->pid;

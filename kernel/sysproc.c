@@ -7,7 +7,9 @@
 #include "pstat.h"
 #include "sysfunc.h"
 
-extern struct pstat* stats;
+//extern struct ptable;
+
+extern struct pstat stats;
 
 int
 sys_reserve(void)
@@ -24,7 +26,10 @@ sys_reserve(void)
 	if (ticketCount + percent > 200)
 		return -1;
 
-	ticketCount += (percent - 1); //Percent is 1 to 100
+	if (ticketCount == -1)
+		ticketCount = percent - 1;
+	else
+		ticketCount += (percent - 1); //Percent is 1 to 100
 	proc->percent = (percent - 1);
 
 	return 0;
@@ -57,7 +62,8 @@ sys_getpinfo(void)
   if(argptr(0, (char**) &stat, sizeof(stats) < 0))
     return -1;
 
-	stat = stats;
+	//getpinfo(stat);
+	stat = &stats;
 
 	return 0;
 }

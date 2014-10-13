@@ -9,6 +9,7 @@
 #define SEG_UDATA 5  // user data+stack
 #define SEG_TSS   6  // this process's task state
 #define NSEGS     7
+#include "pstat.h"
 
 // Per-CPU state
 struct cpu {
@@ -27,9 +28,11 @@ struct cpu {
 
 //The number of tickets currently given out
 extern int ticketCount;
+extern struct pstat stats;
 
 extern struct cpu cpus[NCPU];
 extern int ncpu;
+
 
 // Per-CPU variables, holding pointers to the
 // current cpu and to the current process.
@@ -85,6 +88,9 @@ struct proc {
 };
 
 int random(void);
+int pickProc(struct proc **);
+void updateStats(int, int, int);
+//void getpinfo(struct pstat*);
 
 // Process memory is laid out contiguously, low addresses first:
 //   text

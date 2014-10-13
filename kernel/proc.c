@@ -260,7 +260,7 @@ wait(void)
 //  - swtch to start running that process
 //  - eventually that process transfers control
 //      via swtch back to the scheduler.
-/*
+
 void
 scheduler(void)
 {
@@ -268,7 +268,6 @@ scheduler(void)
 	int index = 0;
 
    for(;;){
-		ticketCount = -1;
 		
 		// Enable interrupts on this processor.
     sti();
@@ -281,24 +280,13 @@ scheduler(void)
 		{
 			//We now have found the process we want to run.
 
-			cprintf("here1\n");
-
-    	// Switch to chosen process.  It is the process's job
     	// to release ptable.lock and then reacquire it
     	// before jumping back to us.
     	proc = p;
     	switchuvm(p);
-			cprintf("here2\n");
     	p->state = RUNNING;
-			cprintf("altered p\n");
-
-    	//This is where the panic: acquire or panic: trap
-    	//Could this be due to proc->context?
 			swtch(&cpu->scheduler, proc->context);
-			cprintf("here3\n");
     	switchkvm();
-
-			cprintf("success\n");
 
 			p->timesrun++;
 			updateStats(p->pid, p->timesrun, index);
@@ -316,12 +304,13 @@ scheduler(void)
 				stats.charge[index] = (int) (incurredCharge%1000);
 				p->nanodollars = incurredCharge;
 			}
+			proc = 0;
 		}
     release(&ptable.lock);
   }
 }
-*/
 
+/*
 void
 scheduler(void)
 {
@@ -340,7 +329,7 @@ scheduler(void)
 
 			pickProc(&p);
 
-			/* Tyler said to add this to ensure that the shell/waiting processes can run */
+			// Tyler said to add this to ensure that the shell/waiting processes can run
 			if (p != NULL)
 			{
 				proc = p;
@@ -358,6 +347,7 @@ scheduler(void)
     release(&ptable.lock);
   }
 }
+*/
 
 int
 pickProc(struct proc **p)

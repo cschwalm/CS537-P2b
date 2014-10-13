@@ -31,6 +31,7 @@ sys_reserve(void)
 	else
 		ticketCount += (percent - 1); //Percent is 1 to 100
 	proc->percent = (percent - 1);
+	proc->bid = 0;
 
 	return 0;
 }

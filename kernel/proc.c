@@ -287,11 +287,17 @@ scheduler(void)
     	// before jumping back to us.
     	proc = p;
     	switchuvm(p);
+			cprintf("here2\n");
     	p->state = RUNNING;
-    	swtch(&cpu->scheduler, proc->context);
+			cprintf("altered p\n");
+
+    	//This is where the panic: acquire or panic: trap
+    	//Could this be due to proc->context?
+			swtch(&cpu->scheduler, proc->context);
+			cprintf("here3\n");
     	switchkvm();
 
-			cprintf("here2\n");
+			cprintf("success\n");
 
 			p->timesrun++;
 			updateStats(p->pid, p->timesrun, index);

@@ -7,12 +7,8 @@
 #include "spinlock.h"
 #include "pstat.h"
 
-struct {
-  struct spinlock lock;
-  struct proc proc[NPROC];
-} ptable;
 
-
+extern struct ptable_t ptable;
 struct pstat stats;
 
 
@@ -237,7 +233,12 @@ wait(void)
         p->parent = 0;
         p->name[0] = 0;
         p->killed = 0;
+				ticketCount = ticketCount - p->percent;
+				p->percent = 0;
+				p->bid = 0;
+				p->nanodollars = 0;
         release(&ptable.lock);
+				stats.inuse[p - ptable.proc] = 0;
         return pid;
       }
     }
@@ -289,19 +290,17 @@ scheduler(void)
     	switchkvm();
 
 			p->timesrun++;
-			updateStats(p->pid, p->timesrun, index);
+			p->exectime += 10;
 				
 			//Assume this runs every 10 milliseconds. At a rate of 100n$/ms this accumulates 1u$ per slice.
 			if (p->percent != 0)
 			{
-				stats.charge[index]++;
 				p->nanodollars += 1000;
 			}
 			else
 			{
 				long incurredCharge = p->bid * 10;
 				incurredCharge += p->nanodollars;
-				stats.charge[index] = (int) (incurredCharge%1000);
 				p->nanodollars = incurredCharge;
 			}
 			proc = 0;
@@ -369,7 +368,7 @@ pickProc(struct proc **p)
 		//cprintf("program id: %d\n", p->pid);
 
 		count+= ret->percent;
-		if (count >= winnerTicket)
+		if (count > winnerTicket)
 		{
 			*p = ret;
 			return (ret - ptable.proc);
@@ -389,6 +388,7 @@ pickProc(struct proc **p)
 	return spotIndex;
 }
 
+/*
 void updateStats(int pid, int timesrun, int index)
 {
 
@@ -400,7 +400,7 @@ void updateStats(int pid, int timesrun, int index)
 			//We assume that 10 ms have passed.
 			stats.time[index] = stats.time[index] + 10;
 }
-
+*/
 /*
 void
 getpinfo(struct pstat* out)
@@ -419,7 +419,7 @@ random(void)
 	bit  = ((lfsr >> 0) ^ (lfsr >> 2) ^ (lfsr >> 3) ^ (lfsr >> 5) ) & 1;
 	lfsr =  (lfsr >> 1) | (bit << 15);
 
-	return (lfsr % 200);
+	return ((lfsr % 200) + 1);
 }
 
 // Enter scheduler.  Must hold only ptable.lock

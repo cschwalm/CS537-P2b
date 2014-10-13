@@ -7,9 +7,8 @@
 #include "pstat.h"
 #include "sysfunc.h"
 
-//extern struct ptable;
+extern struct ptable_t ptable;
 
-extern struct pstat stats;
 
 int
 sys_reserve(void)
@@ -27,10 +26,15 @@ sys_reserve(void)
 		return -1;
 
 	if (ticketCount == -1)
-		ticketCount = percent - 1;
+		ticketCount = percent;
 	else
-		ticketCount += (percent - 1); //Percent is 1 to 100
-	proc->percent = (percent - 1);
+	{
+		if (proc->percent != 0)
+			ticketCount += percent - proc-> percent; //Percent is 1 to 100
+		else
+			ticketCount += percent;
+	}
+	proc->percent = percent;
 	proc->bid = 0;
 
 	return 0;
@@ -57,15 +61,45 @@ sys_spot(void)
 int
 sys_getpinfo(void)
 {
-
+	int index = 0;
 	struct pstat* stat;
-	
-  if(argptr(0, (char**) &stat, sizeof(stats) < 0))
+	struct proc *p;	
+
+  if(argptr(0, (void*) &stat, sizeof(struct pstat) < 0))
     return -1;
 
-	//getpinfo(stat);
-	stat = &stats;
+	acquire(&ptable.lock);
+	for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+	{
+		index = p - ptable.proc;
+		if (p->state == UNUSED)
+		{
+			stat->inuse[index] = 0;
+			continue;
+		}
+		else
+			stat->inuse[index] = 1;
+		stat->pid[index] = p->pid;
+		stat->chosen[index] = p->timesrun;
+		stat->time[index] = p->exectime;
+		//cprintf("nano: %d\n", p->nanodollars);
+		stat->charge[index] = (int) (p->nanodollars / 1000);
+		//cprintf("micro: %d\n", p->nanodollars/  1000);
+	}
 
+	release(&ptable.lock);	
+	/*
+	for (i = 0; i < NPROC; i++)
+	{
+		if (stat->inuse[i] == 1)
+		{
+			cprintf("pid: %d |", stat->pid[i]);
+			cprintf("chosen: %d |", stat->chosen[i]);
+			cprintf("time: %d |", stat->time[i]);
+			cprintf("charge: %d\n", stat->charge[i]);
+		}
+	}
+	*/	
 	return 0;
 }
 

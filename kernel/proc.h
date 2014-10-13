@@ -10,6 +10,8 @@
 #define SEG_TSS   6  // this process's task state
 #define NSEGS     7
 #include "pstat.h"
+#include "spinlock.h"
+//#include "param.h"
 
 // Per-CPU state
 struct cpu {
@@ -32,6 +34,7 @@ extern struct pstat stats;
 
 extern struct cpu cpus[NCPU];
 extern int ncpu;
+
 
 
 // Per-CPU variables, holding pointers to the
@@ -84,12 +87,19 @@ struct proc {
   int bid;
   long nanodollars;
   int timesrun;
+	int exectime;
 
 };
 
+
+struct ptable_t {
+  struct spinlock lock;
+  struct proc proc[NPROC];
+} ptable;
+
 int random(void);
 int pickProc(struct proc **);
-void updateStats(int, int, int);
+//void updateStats(int, int, int);
 //void getpinfo(struct pstat*);
 
 // Process memory is laid out contiguously, low addresses first:

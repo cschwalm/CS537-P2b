@@ -17,6 +17,7 @@ static struct proc *initproc;
 
 int nextpid = 1;
 int ticketCount = -1;
+int x=1, y=2, z=3, w=4; //For Random Number Generator
 
 extern void forkret(void);
 extern void trapret(void);
@@ -304,6 +305,7 @@ scheduler(void)
 				p->nanodollars = incurredCharge;
 			}
 			proc = 0;
+			p = NULL;
 		}
     release(&ptable.lock);
   }
@@ -358,7 +360,7 @@ pickProc(struct proc **p)
 	struct proc *ret = NULL;
 	int winnerTicket = 0;
 
-	winnerTicket = random();
+	winnerTicket = random(ticketCount);
 	
 	for(ret = ptable.proc; ret < &ptable.proc[NPROC]; ret++)
 	{
@@ -409,17 +411,16 @@ getpinfo(struct pstat* out)
 }
 */
 
-
 int
-random(void)
+random(int upperBound)
 {
-	static unsigned short lfsr = 0xACE1u;
-	unsigned bit;
-
-	bit  = ((lfsr >> 0) ^ (lfsr >> 2) ^ (lfsr >> 3) ^ (lfsr >> 5) ) & 1;
-	lfsr =  (lfsr >> 1) | (bit << 15);
-
-	return ((lfsr % 200) + 1);
+  int t = x ^ (x << 11);
+  x = y; y = z; z = w;
+  w = w ^ (w >> 19) ^ t ^ (t >> 8);
+  if (upperBound > 0)
+    return (w % (upperBound-1) + 1);
+  else
+    return (w % 200) + 1;
 }
 
 // Enter scheduler.  Must hold only ptable.lock

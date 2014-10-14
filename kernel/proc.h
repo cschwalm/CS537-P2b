@@ -97,7 +97,7 @@ struct ptable_t {
   struct proc proc[NPROC];
 } ptable;
 
-int random(void);
+int random(int);
 int pickProc(struct proc **);
 //void updateStats(int, int, int);
 //void getpinfo(struct pstat*);
